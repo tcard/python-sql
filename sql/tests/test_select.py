@@ -224,3 +224,25 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(str(query),
             'SELECT "a"."c" FROM "t" AS "a" FOR UPDATE')
         self.assertEqual(query.params, ())
+
+    def test_select_distinct(self):
+        c = self.table.c
+        query = self.table.select(c, distinct=True)
+        self.assertEqual(str(query),
+            'SELECT DISTINCT "a"."c" FROM "t" AS "a"')
+        self.assertEqual(query.params, ())
+
+    def test_select_all(self):
+        c = self.table.c
+        query = self.table.select(c, all_=True)
+        self.assertEqual(str(query),
+            'SELECT ALL "a"."c" FROM "t" AS "a"')
+        self.assertEqual(query.params, ())
+
+    def test_select_distinct_all_fails(self):
+        c = self.table.c
+        query = self.table.select(c, all_=True)
+        self.assertRaises(Exception, setattr, query, 'distinct', True)
+
+        query = self.table.select(c, distinct=True)
+        self.assertRaises(Exception, setattr, query, 'all', True)

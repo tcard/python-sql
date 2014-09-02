@@ -38,6 +38,8 @@ from threading import local, currentThread
 from collections import defaultdict
 
 
+hey = 123
+
 def alias(i, letters=string.ascii_lowercase):
     '''
     Generate a unique alias based on integer
@@ -251,17 +253,25 @@ class _SelectQueryMixin(object):
 
 class Select(Query, FromItem, _SelectQueryMixin):
     __slots__ = ('__columns', '__where', '__group_by', '__having', '__for_',
-        'from_')
+        'from_', '__distinct', '__all')
 
     def __init__(self, columns, from_=None, where=None, group_by=None,
-            having=None, for_=None, **kwargs):
+            having=None, for_=None, distinct=False, all_=False, **kwargs):
         self.__columns = None
         self.__where = None
         self.__group_by = None
         self.__having = None
         self.__for_ = None
+        self.__distinct = None
+        self.__all = None
         super(Select, self).__init__(**kwargs)
-        # TODO ALL|DISTINCT
+        self.distinct = distinct
+        self.all = all_
+        self.columns = columns
+        self.from_ = from_
+        self.where = where
+        self.group_by = group_by
+        self.having = having
         self.columns = columns
         self.from_ = from_
         self.where = where
@@ -300,6 +310,28 @@ class Select(Query, FromItem, _SelectQueryMixin):
                 value = [value]
             assert all(isinstance(col, Expression) for col in value)
         self.__group_by = value
+
+    @property
+    def distinct(self):
+        return self.__distinct
+
+    @distinct.setter
+    def distinct(self, value):
+        assert isinstance(value, bool)
+        if value:
+            assert not self.all
+        self.__distinct = value
+
+    @property
+    def all(self):
+        return self.__all
+
+    @all.setter
+    def all(self, value):
+        assert isinstance(value, bool)
+        if value:
+            assert not self.distinct
+        self.__all = value
 
     @property
     def having(self):
@@ -350,7 +382,12 @@ class Select(Query, FromItem, _SelectQueryMixin):
             for_ = ''
             if self.for_ is not None:
                 for_ = ' ' + ' '.join(map(str, self.for_))
-            return ('SELECT %s FROM %s' % (columns, from_) + where + group_by
+            sel_opt = ''
+            if self.distinct:
+                sel_opt = 'DISTINCT '
+            elif self.all:
+                sel_opt = 'ALL '
+            return ('SELECT %s%s FROM %s' % (sel_opt, columns, from_) + where + group_by
                 + having + self._order_by_str + self._limit_str +
                 self._offset_str + for_)
 
