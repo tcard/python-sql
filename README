@@ -1,6 +1,8 @@
 python-sql
 ==========
 
+**This is [a fork](https://code.google.com/p/python-sql/).**
+
 python-sql is a library to write SQL queries in a pythonic way.
 
 Nutshell
