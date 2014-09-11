@@ -71,14 +71,16 @@ class Flavor(object):
         paramstyle - state the type of parameter marker formatting
         ilike - support ilike extension
         function_mapping - dictionary with Function to replace
+        quote_character - with what to wrap table and column names
     '''
 
     def __init__(self, max_limit=None, paramstyle='format', ilike=False,
-            function_mapping=None):
+            function_mapping=None, quote_character='"'):
         self.max_limit = max_limit
         self.paramstyle = paramstyle
         self.ilike = ilike
         self.function_mapping = function_mapping or {}
+        self.quote_character = quote_character
 
     @property
     def param(self):
@@ -713,7 +715,8 @@ class Table(FromItem):
         self.__name = name
 
     def __str__(self):
-        return '"%s"' % self.__name
+        q = Flavor.get().quote_character
+        return '%s%s%s' % (q, self.__name, q)
 
     @property
     def params(self):
@@ -823,8 +826,10 @@ class From(list):
 
     def __str__(self):
         def format(from_):
+            q = Flavor.get().quote_character
+            mask = q + '%s' + q
             if isinstance(from_, Query):
-                return '(%s) AS "%s"' % (from_, from_.alias)
+                return ('(%s) AS ' + mask) % (from_, from_.alias)
             else:
                 alias = getattr(from_, 'alias', None)
                 columns_definitions = getattr(from_, 'columns_definitions',
@@ -832,10 +837,10 @@ class From(list):
                 # XXX find a better test for __getattr__ which returns Column
                 if (alias and columns_definitions
                         and not isinstance(columns_definitions, Column)):
-                    return '%s AS "%s" (%s)' % (from_, alias,
+                    return ('%s AS ' + mask + ' (%s)') % (from_, alias,
                         columns_definitions)
                 elif alias:
-                    return '%s AS "%s"' % (from_, alias)
+                    return ('%s AS ' + mask) % (from_, alias)
                 else:
                     return str(from_)
         return ', '.join(map(format, self))
@@ -1017,13 +1022,15 @@ class Column(Expression):
         return self.__name
 
     def __str__(self):
+        q = Flavor.get().quote_character
+        mask = q + "%s" + q
         if self.__name == '*':
             t = '%s'
         else:
-            t = '"%s"'
+            t = mask
         alias = self.__from.alias
         if alias:
-            t = '"%s".' + t
+            t = mask + '.' + t
             return t % (alias, self.__name)
         else:
             return t % self.__name
@@ -1042,7 +1049,8 @@ class As(Expression):
         self.output_name = output_name
 
     def __str__(self):
-        return '"%s"' % self.output_name
+        q = Flavor.get().quote_character
+        return '%s%s%s' % (q, self.output_name, q)
 
     @property
     def params(self):

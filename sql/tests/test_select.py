@@ -65,29 +65,41 @@ class TestSelect(unittest.TestCase):
             'SELECT "a"."c", "b".* FROM "t" AS "a", "t2" AS "b", "t3" AS "c"')
         self.assertEqual(query.params, ())
 
-    def test_select_union(self):
+    def _test_select_union_quote(self, quote):
         query1 = self.table.select()
         query2 = Table('t2').select()
         union = query1 | query2
+        q = lambda x: x.replace('"', quote)
         self.assertEqual(str(union),
-            'SELECT * FROM "t" AS "a" UNION SELECT * FROM "t2" AS "b"')
+            q('SELECT * FROM "t" AS "a" UNION SELECT * FROM "t2" AS "b"'))
         union.all_ = True
         self.assertEqual(str(union),
-            'SELECT * FROM "t" AS "a" UNION ALL '
-            'SELECT * FROM "t2" AS "b"')
+            q('SELECT * FROM "t" AS "a" UNION ALL '
+            'SELECT * FROM "t2" AS "b"'))
         self.assertEqual(str(union.select()),
-            'SELECT * FROM ('
+            q('SELECT * FROM ('
             'SELECT * FROM "t" AS "b" UNION ALL '
-            'SELECT * FROM "t2" AS "c") AS "a"')
+            'SELECT * FROM "t2" AS "c") AS "a"'))
         query1.where = self.table.c == 'foo'
         self.assertEqual(str(union),
-            'SELECT * FROM "t" AS "a" WHERE ("a"."c" = %s) UNION ALL '
-            'SELECT * FROM "t2" AS "b"')
+            q('SELECT * FROM "t" AS "a" WHERE ("a"."c" = %s) UNION ALL '
+            'SELECT * FROM "t2" AS "b"'))
         self.assertEqual(union.params, ('foo',))
 
         union = Union(query1)
         self.assertEqual(str(union), str(query1))
         self.assertEqual(union.params, query1.params)
+
+    def test_select_union(self):
+        self._test_select_union_quote(Flavor.get().quote_character)
+
+    def test_select_union_flavor(self):
+        flavor = Flavor.get()
+        prev = flavor.quote_character
+        flavor.quote_character = '`'
+        self._test_select_union_quote('`')
+        flavor.quote_character = prev
+        Flavor.set(flavor)
 
     def test_select_union_order(self):
         query1 = self.table.select()

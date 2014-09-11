@@ -28,7 +28,7 @@
 
 import unittest
 
-from sql import As, Column, Table
+from sql import As, Column, Table, Flavor
 
 
 class TestOrder(unittest.TestCase):
@@ -42,3 +42,10 @@ class TestOrder(unittest.TestCase):
         query = self.table.select(self.column.as_('foo'))
         self.assertEqual(str(query), 'SELECT "a"."c" AS "foo" FROM "t" AS "a"')
         self.assertEqual(query.params, ())
+
+    def test_flavor(self):
+        flavor = Flavor.get()
+        prev = flavor.quote_character
+        flavor.quote_character = '`'
+        self.assertEqual(str(As(self.column, 'foo')), '`foo`')
+        flavor.quote_character = prev

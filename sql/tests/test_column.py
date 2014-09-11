@@ -28,14 +28,25 @@
 
 import unittest
 
-from sql import Column, Table, AliasManager
+from sql import Column, Table, AliasManager, Flavor
 
 
 class TestColumn(unittest.TestCase):
-    def test_column(self):
+    def _test_column_with_quote(self, quote):
         column = Column(Table('t'), 'c')
-        self.assertEqual(str(column), '"c"')
+        self.assertEqual(str(column), quote + 'c' + quote)
         self.assertEqual(column.name, 'c')
 
         with AliasManager():
-            self.assertEqual(str(column), '"a"."c"')
+            self.assertEqual(str(column),
+                             '%sa%s.%sc%s' % (quote, quote, quote, quote))
+
+    def test_column(self):
+        self._test_column_with_quote(Flavor.get().quote_character)
+
+    def test_flavor(self):
+        flavor = Flavor.get()
+        prev = flavor.quote_character
+        flavor.quote_character = '`'
+        self._test_column_with_quote('`')
+        flavor.quote_character = prev
